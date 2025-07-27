@@ -2,7 +2,7 @@
   "scripts": {
     "ci-test": "concurrently --kill-others --success first \"npm start\" \"wait-on http://localhost:8080 && mocha --exit\"",
     "test": "mocha",
-    "start": "npx wrangler pages dev ./ --kv \"img_url\" --port 8080 --binding UPLOAD_USERNAME=young --binding UPLOAD_PASSWORD=123456 --binding TG_Bot_Token=8229696596:AAGlz0OhM1j_lRk2b1FLrYAT75sWQJU9ok0 --binding TG_Chat_ID=-1002548752432 --persist-to ./data"
+    "start": "npx wrangler pages dev ./ --kv \"img_url\" --port 8080 --binding UPLOAD_USERNAME=young --binding UPLOAD_PASSWORD=123456 --persist-to ./data"
   },
   "dependencies": {
     "@cloudflare/pages-plugin-sentry": "^1.1.3",
