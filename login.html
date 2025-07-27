@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - Telegraph-Image</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .login-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-title {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #333;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 500;
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+        .login-button {
+            width: 100%;
+            padding: 0.75rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .login-button:hover {
+            background: #5a67d8;
+        }
+        .login-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .error-message {
+            color: #e53e3e;
+            margin-top: 1rem;
+            text-align: center;
+            display: none;
+        }
+        .success-message {
+            color: #38a169;
+            margin-top: 1rem;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1 class="login-title">Telegraph-Image 登录</h1>
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label" for="username">用户名</label>
+                <input type="text" id="username" name="username" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="password">密码</label>
+                <input type="password" id="password" name="password" class="form-input" required>
+            </div>
+            <button type="submit" class="login-button">登录</button>
+        </form>
+        <div id="errorMessage" class="error-message"></div>
+        <div id="successMessage" class="success-message"></div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const button = document.querySelector('.login-button');
+            const errorMessage = document.getElementById('errorMessage');
+            const successMessage = document.getElementById('successMessage');
+            
+            // Hide previous messages
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+            
+            // Disable button
+            button.disabled = true;
+            button.textContent = '登录中...';
+            
+            // Store credentials
+            sessionStorage.setItem('uploadCredentials', JSON.stringify({
+                username: username,
+                password: password
+            }));
+            
+            // Test credentials by making a test upload request
+            const testFormData = new FormData();
+            testFormData.append('username', username);
+            testFormData.append('password', password);
+            testFormData.append('file', new Blob(['test'], { type: 'text/plain' }), 'test.txt');
+            
+            console.log('Testing login with credentials:', { username, password: '***' });
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: testFormData
+            })
+            .then(response => {
+                console.log('Login test response status:', response.status);
+                console.log('Login test response headers:', Object.fromEntries(response.headers.entries()));
+                
+                if (response.status === 401) {
+                    throw new Error('用户名或密码错误');
+                } else if (response.status === 500) {
+                    throw new Error('服务器配置错误');
+                } else if (response.ok) {
+                    // Login successful, redirect to main page
+                    successMessage.textContent = '登录成功，正在跳转...';
+                    successMessage.style.display = 'block';
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('loggedInUser', username); // Store username
+                    setTimeout(() => {
+                        window.location.href = '/index.html';
+                    }, 1000);
+                } else {
+                    return response.text().then(text => {
+                        console.log('Response text:', text);
+                        throw new Error(`服务器响应错误: ${response.status} - ${text}`);
+                    });
+                }
+            })
+            .catch(error => {
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+                
+                // Re-enable button
+                button.disabled = false;
+                button.textContent = '登录';
+            });
+        });
+    </script>
+</body>
+</html>

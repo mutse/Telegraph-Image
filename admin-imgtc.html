@@ -460,6 +460,15 @@
             try {
               const formData = new FormData();
               formData.append('file', file);
+              
+              // 添加认证信息
+              const storedCredentials = sessionStorage.getItem('uploadCredentials');
+              if (storedCredentials) {
+                const credentials = JSON.parse(storedCredentials);
+                formData.append('username', credentials.username);
+                formData.append('password', credentials.password);
+              }
+              
               const res = await fetch(`${this.baseURL}/upload`, {
                 method: 'POST',
                 body: formData,

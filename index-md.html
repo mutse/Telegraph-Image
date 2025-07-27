@@ -2,8 +2,57 @@
 <!doctype html>
 <html data-n-head-ssr>
   <script>
+  // 登录检查函数
+  async function checkLoginStatus() {
+    try {
+      const response = await fetch('/api/auth/check', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data.authenticated === true;
+      }
+      return false;
+    } catch (error) {
+      console.error('登录检查失败:', error);
+      return false;
+    }
+  }
+
+  // 获取认证信息
+  function getAuthCredentials() {
+    const storedCredentials = sessionStorage.getItem('uploadCredentials');
+    if (storedCredentials) {
+      return JSON.parse(storedCredentials);
+    }
+    return null;
+  }
+
+  // 为fetch请求添加认证信息
+  function addAuthToRequest(options = {}) {
+    const credentials = getAuthCredentials();
+    if (credentials) {
+      if (!options.body) {
+        options.body = new FormData();
+      }
+      if (options.body instanceof FormData) {
+        options.body.append('username', credentials.username);
+        options.body.append('password', credentials.password);
+      }
+    }
+    return options;
+  }
+
+  // 重定向到登录页面
+  function redirectToLogin() {
+    window.location.href = '/login.html';
+  }
+
   // 等待整个文档加载完毕
 document.addEventListener('DOMContentLoaded', function() {
+    // 认证已禁用，直接允许使用上传功能
+    console.log('认证已禁用，可以直接使用上传功能');
     var lastInputValue = ''; // 用于存储上一次输入框的值
     var timer; // 用于存储定时器的引用
 

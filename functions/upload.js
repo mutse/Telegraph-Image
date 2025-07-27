@@ -4,6 +4,12 @@ export async function onRequestPost(context) {
     const { request, env } = context;
 
     try {
+        // 用户校验已禁用
+        // const authResult = await requireAuth(context);
+        // if (authResult) {
+        //     return authResult;
+        // }
+
         const clonedRequest = request.clone();
         const formData = await clonedRequest.formData();
 
@@ -13,6 +19,14 @@ export async function onRequestPost(context) {
         const uploadFile = formData.get('file');
         if (!uploadFile) {
             throw new Error('No file uploaded');
+        }
+
+        // 检查必要的环境变量
+        if (!env.TG_Bot_Token) {
+            throw new Error('TG_Bot_Token not configured');
+        }
+        if (!env.TG_Chat_ID) {
+            throw new Error('TG_Chat_ID not configured');
         }
 
         const fileName = uploadFile.name;
@@ -83,7 +97,7 @@ export async function onRequestPost(context) {
 }
 
 function getFileId(response) {
-    if (!response.ok || !response.result) return null;
+    if (!response || !response.result) return null;
 
     const result = response.result;
     if (result.photo) {
@@ -102,9 +116,16 @@ async function sendToTelegram(formData, apiEndpoint, env, retryCount = 0) {
     const MAX_RETRIES = 2;
     const apiUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/${apiEndpoint}`;
 
+    console.log(`Sending to Telegram: ${apiEndpoint}`);
+    console.log(`API URL: ${apiUrl}`);
+    console.log(`Chat ID: ${env.TG_Chat_ID}`);
+
     try {
         const response = await fetch(apiUrl, { method: "POST", body: formData });
         const responseData = await response.json();
+
+        console.log(`Telegram response status: ${response.status}`);
+        console.log(`Telegram response:`, responseData);
 
         if (response.ok) {
             return { success: true, data: responseData };
@@ -119,9 +140,12 @@ async function sendToTelegram(formData, apiEndpoint, env, retryCount = 0) {
             return await sendToTelegram(newFormData, 'sendDocument', env, retryCount + 1);
         }
 
+        const errorMessage = responseData.description || responseData.error_code || 'Upload to Telegram failed';
+        console.error(`Telegram API error: ${errorMessage}`);
+        
         return {
             success: false,
-            error: responseData.description || 'Upload to Telegram failed'
+            error: errorMessage
         };
     } catch (error) {
         console.error('Network error:', error);

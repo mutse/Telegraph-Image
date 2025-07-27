@@ -19,7 +19,7 @@ export async function errorHandling(context) {
     return sentryPlugin({
       dsn: "https://219f636ac7bde5edab2c3e16885cb535@o4507041519108096.ingest.us.sentry.io/4507541492727808",
       tracesSampleRate: sampleRate,
-    })(context);;
+    })(context);
   }
   return context.next();
 }
@@ -70,7 +70,9 @@ export function telemetryData(context) {
     } catch (e) {
       console.log(e);
     } finally {
-      context.data.transaction.finish();
+      if (context.data.transaction) {
+        context.data.transaction.finish();
+      }
     }
   }
   return context.next();
@@ -89,6 +91,55 @@ export async function traceData(context, span, op, name) {
       );
     }
   }
+}
+
+export async function requireAuth(context) {
+  const { request, env } = context;
+  
+  const validUsername = env.UPLOAD_USERNAME;
+  const validPassword = env.UPLOAD_PASSWORD;
+  
+  if (!validUsername || !validPassword) {
+    console.error('UPLOAD_USERNAME or UPLOAD_PASSWORD not configured');
+    return new Response('Server configuration error', {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' }
+    });
+  }
+  
+  // Try Basic Auth first
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader && authHeader.startsWith('Basic ')) {
+    const base64Credentials = authHeader.split(' ')[1];
+    const credentials = atob(base64Credentials);
+    const [username, password] = credentials.split(':');
+    
+    if (username === validUsername && password === validPassword) {
+      return null; // Authentication successful
+    }
+  }
+  
+  // Try form data authentication (for file uploads)
+  try {
+    const clonedRequest = request.clone();
+    const formData = await clonedRequest.formData();
+    const username = formData.get('username');
+    const password = formData.get('password');
+    
+    if (username === validUsername && password === validPassword) {
+      return null; // Authentication successful
+    }
+  } catch (error) {
+    // If formData parsing fails, continue to authentication failure
+  }
+  
+  return new Response(JSON.stringify({ 
+    error: 'Authentication required',
+    message: 'Please provide valid username and password'
+  }), {
+    status: 401,
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
 
 async function fetchSampleRate(context) {
